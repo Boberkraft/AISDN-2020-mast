@@ -2,18 +2,21 @@
 #include <stdio.h>
 #include <string>
 
-const int MAX_TREES = 10;
-const int MAX_NODES = 100;
+const int MAX_TREES = 100;
+const int MAX_NODES = 10;
 int current_tree = 0;
 
-using std::endl, std::cout, std::string;
+using std::endl, std::cin, std::cout, std::string;
 
 struct Node {
     int value { -1 };
     int children_number { 0 };
     int d_sum { 0 };
     int d_product { 1 };
+    int d_product_sum { 1 };
     int d_length { 0 };
+    int d_product_sum_p { 1 };
+    int d_product_sum_s { 0 };
     bool hidden { false };
     Node* parent { nullptr };
     Node* first_son { nullptr };
@@ -36,69 +39,128 @@ struct Tree {
 };
 
 
-Node* TREES[MAX_TREES];
+Tree* TREES[MAX_TREES];
 Node* NODES[MAX_TREES * MAX_NODES];
-
-bool recalculate(Node &node) {
-    if (is_leaf(node)) {
-        node.d_length = 1;
-        node.d_sum = node.value;
-        node.d_product = node.value;
-    } else {
-        node.d_sum = 0;
-        node.d_product = 1;
-        node.d_length = 0;
-        node.children_number = 0;
-        
-        Node* son = node.first_son;
-        if (son != nullptr) {
-            if (!son->hidden) {
-                recalculate(*son);
-                node.d_sum += son->d_sum;
-                node.d_product += son->d_product;
-                node.d_length += son->d_length;
-                node.children_number += 1;
-            }
-            son = son->brother;
-        }
-    }
-}
-
-void print_exp(Node &node) {
-    if (node.value == -1) {
-        cout << "(";
-        print_exp(*node.first_son);
-        cout << ")";
-    } else {
-        cout << node.value;
-    }
-    if(node.brother != nullptr) {
-        cout << ", ";
-        print_exp(*node.brother);
-    }
-}
 
 Tree* new_tree() {
     Node* new_node = new Node { -1 };
     Tree* new_tree = new Tree { current_tree };
     new_tree->root = new_node;
+    TREES[current_tree] = new_tree;
     current_tree++;
     return new_tree;
 }
 
-inline Node* get_node(Tree &tree, int i) {
-    return NODES[MAX_NODES * tree.i];
+
+Tree* get_tree(int i) {
+    return TREES[i];
+}
+
+void print_exp(Node &node) {
+    if (node.value == -1) {
+        // if (node.d_length > 0) {
+            cout << "(";
+            print_exp(*node.first_son);
+            cout << ")";
+        // }
+ 
+    } else {
+        if (node.hidden) {
+            cout << "[";
+        }
+        cout << node.value;
+        if (node.hidden) {
+            cout << "]";
+        }
+    }
+    if(node.brother != nullptr) {
+        cout << ",";
+        print_exp(*node.brother);
+    }
+}
+
+// i 3 zwraca node z value = 4
+Node* get_node(Tree &tree, int i) {
+    return NODES[MAX_NODES * tree.i + i];
 }
 void register_node(Tree &tree, Node &node) {
-    NODES[MAX_NODES * tree.i + tree.leafs] = &node;
+    NODES[MAX_NODES * tree.i + node.value -1] = &node;
     tree.leafs++;
 }
 
-void add_child(Node &parent, Node &child) {
-    if (parent.value != -1) {
-        cout << "Ej!" << endl;
-        parent.value = -1;
+void recalculate(Node &node) {
+    // print_exp(node);
+    // cout << endl;
+    if (is_leaf(node)) {
+        // cout << "x";
+        node.d_length = 1;
+        node.d_sum = node.value;
+        node.d_product = node.value;
+        node.children_number = 1;
+        node.d_product_sum = (node.d_sum + node.d_product);
+        node.d_product_sum_p = 1;
+        node.d_product_sum_s = 0;
+        // cout << node.value << endl;
+        // if (node.value == 69) {
+        //     cout << "No nie!" << endl;
+        // }
+    } else {
+        // if (node.first_son == nullptr) {
+        //     cout << "Dupa!" << endl;
+        // }
+        node.d_sum = 0;
+        node.d_product = 1;
+        node.d_length = 0;
+        node.children_number = 0;
+        node.d_product_sum = 1;
+        node.d_product_sum_p = 1;
+        node.d_product_sum_s = 0;
+        // cout << "----" << endl;
+        Node* last_processed_son = nullptr;
+        for (Node* son = node.first_son; son != nullptr; son = son->brother) {
+            if (!son->hidden && son->value != 69) {
+                recalculate(*son);
+                if (son->d_sum == 0) {
+                    continue;
+                }
+                node.d_sum += son->d_sum;
+                node.d_product *= son->d_sum;
+                node.d_length += son->d_length;
+                // cout << "son->value = " << son->value << endl;
+                // cout << "son = "; print_exp(*son);cout<< endl; 
+                // cout << "son->d_sum = " << son->d_sum << endl;
+                // cout << "son->d_product = " << son->d_product << endl;
+                node.d_product_sum_p += son->d_product_sum_p * son->d_sum * son->d_product;
+                node.d_product_sum_s *= son->d_product_sum_s + son->d_sum + son->d_product;
+                // cout << "son->d_product_sum = " << node.d_product_sum << endl;
+                node.children_number += 1;
+                last_processed_son = son;
+            } else {
+                // cout << "Hidden" << endl;
+            }
+        }
+
+        if (node.children_number == 1) {
+            node.d_sum = last_processed_son->d_sum;
+            node.d_product = last_processed_son->d_product;
+            node.d_product_sum = last_processed_son->d_product_sum;
+            node.d_length = last_processed_son->d_length;
+            node.children_number = last_processed_son->children_number;
+            node.d_product_sum_p = last_processed_son->d_product_sum_p;
+            node.d_product_sum_s = last_processed_son->d_product_sum_s;
+        }
+
     }
+    // cout << "k" << endl;    
+    // cout << node.d_product_sum  << endl;
+}
+
+
+void add_child(Node &parent, Node &child) {
+    // if (parent.value != -1) {
+    //     cout << "Ej!" << endl;
+    //     parent.value = -1;
+    // }
     if (parent.first_son == nullptr) {
         parent.first_son = &child;
     } else {
@@ -116,23 +178,35 @@ int my_stoi(string str_val) {
             val += char_at_pos - '0';
         }
     }
-    cout << "  my_stoi(" << str_val << ") -> " << val << endl;
+    //cout << "  my_stoi(" << str_val << ") -> " << val << endl;
     return val;
 }
 
 bool isomorphic(Node *first, Node *second) {
-    if (first == nullptr && second == nullptr)
-        return true;
-    if (first == nullptr || second == nullptr)
-        return false;
-    if (first->hidden && second->hidden)
-        return true;
-    if (first->hidden != second->hidden)
-        return false;
+    // if (first == nullptr && second == nullptr)
+    //     return true;
+    // if (first == nullptr || second == nullptr)
+    //     return false;
+    // if (first->hidden && second->hidden)
+    //     return true;
+    // if (first->hidden != second->hidden)
+    //     return false;
+
+    // cout << endl;
+    // cout << first->d_sum << " " << second->d_sum;
+    // cout << endl;
+    // cout << first->d_product << " " << second->d_product;
+    // cout << endl;
+    // cout << first->d_product_sum << " " << second->d_product_sum;
+    // cout << endl;
     return (first->children_number == second->children_number 
          && first->d_length == second->d_length 
          && first->d_sum == second->d_sum 
-         && first->d_product == second->d_product);
+         && first->d_product == second->d_product
+         && first->d_product_sum == second->d_product_sum
+         && first->d_product_sum_p == second->d_product_sum_p
+         && first->d_product_sum_s == second->d_product_sum_s
+         );
 }
 
 
@@ -140,36 +214,85 @@ bool combinations_of_k(int start, int k, Tree &tree1, Tree &tree2) {
     if (k == 0) {
         recalculate(*tree1.root);
         recalculate(*tree2.root);
-        return isomorphic(tree1.root, tree2.root);
+        // print_exp(*tree1.root);
+        // cout << " == ";;
+        // print_exp(*tree2.root);
+        // cout << endl;
+        // cout << isomorphic(tree1.root, tree2.root) << "?" << endl;
+        if (isomorphic(tree1.root, tree2.root)) {
+            // cout << start << " X " << k << endl;
+            // print_exp(*tree1.root);
+            // cout << " == ";;
+            // print_exp(*tree2.root);
+            return true;
+        } else
+        {
+             return false;
+        }
+        
+        // return isomorphic(tree1.root, tree2.root);
     }
     for (int i = start; i < tree1.leafs; i++) {
-        Node removed = *get_node(tree1, i);
-        removed.hidden = true;
+// (9,3,[5],(1,[6],(10,[7])),4,(2,[8]))
+        Node* node1 = get_node(tree1, i);
+        Node* node2 = get_node(tree2, i);
+        node1->hidden = true;
+        node2->hidden = true;
+        // cout << "- " << get_node(tree1, i)->value << endl;
+        // cout << get_node(tree1, i)->hidden <<  endl;
+        // cout << get_node(tree2, i)->hidden <<  endl;
         if(combinations_of_k(i+1, k-1, tree1, tree2)) {
+            node1->hidden = false;
+            node2->hidden = false;
             return true;
         }
-        removed.hidden = false;
+        // cout << "+ " << get_node(tree1, i)->value << endl;
+        node1->hidden = false;
+        node2->hidden = false;
     }
     return false;
 }
 
 int progressing_powerset(Tree &tree1, Tree &tree2) {
     for (int i = 1; i < tree1.leafs; i++) {
+        // cout << "-> combinations_of_k(" << i << ")" << endl;
         if (combinations_of_k(0, i, tree1, tree2)) {
             return i;
         }
+        // cout << "d" << endl;
     }
+
+    cout << endl << "Brak odpowiedzi?" << endl;
+    return 420;
 }
 
 void parse(string input, Node &parent, Tree &tree) {
-    cout << "parse(" << input << ")" << endl;
+    // cout << "parse(" << input << ")" << endl;
     int level = 0;
     int last_coma = -1;
     bool did_something = false;
 
     if (input[0] == '(' && input[input.size()-1] == ')') {
-        return parse(input.substr(1, input.size() - 2), parent, tree);
+        // (x) or (x),(y)
+        bool its_single = true;
+        level = 0;
+        for (int i = 0; i <= input.size(); i++) {
+            if (input[i] == '(')
+                level++;
+            if (input[i] == ')')
+                level--;
+            if (level == 0 && input[i] == ',') {
+                its_single = false;
+                break;
+            }
+        }
+        
+        if (its_single) {
+            return parse(input.substr(1, input.size() - 2), parent, tree);
+        }
+            
     }
+    level = 0;
     for (int i = 0; i <= input.size(); i++) {
         if (input[i] == '(')
             level++;
@@ -183,57 +306,182 @@ void parse(string input, Node &parent, Tree &tree) {
             parse(input.substr(last_coma+1, i - (last_coma + 1) + 1), *new_node, tree);
             last_coma = i+1;
             add_child(parent, *new_node);
-            parent.d_sum += new_node->d_sum;
-            parent.d_product += new_node->d_product;
-            parent.d_length += new_node->d_length;
-            parent.children_number += 1;
+            // parent.d_sum += new_node->d_sum ;
+            // // print_exp(parent);
+            // // cout << endl;
+            // // cout << "(" << new_node->d_sum   <<"+" << new_node->d_product << ")";
+            // // cout << endl;
+            // parent.d_product_sum *= (new_node->d_sum + new_node->d_product);
+            // parent.d_product *= new_node->d_sum;
+            // parent.d_length += new_node->d_length;
+            // parent.children_number += 1;
             did_something = true;
         }
     }
 
     if (did_something)
+    {
+        // cout << endl;
         return;
+    }
+        // return; 
     
 
-    parent.d_length = 1;
+
     parent.value = my_stoi(input);
-    parent.d_sum = parent.value;
-    parent.d_product = parent.value;
+    // if (parent.value == 69) {
+    //     parent.hidden = true;
+    // } else {
+        register_node(tree, parent);
+    // }
+    
 }
 
-void test() {
-    Node root { -1 };
-    Node child1 {};
-    Node child2 {};
-    Node child3 {};
-    Node child4 {};
-    Node child5 {};
-    child1.value = 99;
-    child3.value = 69;
-    child4.value = 23;
-    child5.value = 44;
-    add_child(root, child1);
-    add_child(root, child2);
-    add_child(child2, child3);
-    add_child(child2, child4);
-    add_child(child2, child5);
-    print_exp(root);
-}
-int main() {
-    string input1 = "(4,(8),(2,((6))))";
-    string input2 = "((8,((4)),(6,2)))";
+void test(bool expected, string input1, string input2) {
     Tree tree1 = *new_tree();
     Tree tree2 = *new_tree();
     parse(input1, *tree1.root, tree1);
     parse(input2, *tree2.root, tree2);
 
+    // cout << "Tree1:" << endl;
+    recalculate(*tree1.root);
+    // cout << "Tree2:" << endl;
+    recalculate(*tree2.root);
+    if (isomorphic(tree1.root, tree2.root) == expected) {
+        cout << ".";
+    } else {
+        cout << "FAIL!" << endl;
+        cout << input1 << " == ";
+        print_exp(*tree1.root);
+        cout << endl;
+
+        cout << input2 << " == ";
+        print_exp(*tree2.root);
+        cout << endl;
+        if (expected) {
+            cout << "Sa izomorficzne!" << endl;
+        } else {
+            cout << "Nie sa izomorficzne!" << endl;
+        }
+        cout << endl;
+    }
+}
+void ismorphic_test() {
+    test(false, "(1,(2,3))", "((1,2),3)");
+    test(true, "(1,(2,3))", "((2,3),1)");
+    test(false, "(1)", "(2)");
+    test(false, "(1,2,3)", "((1,2),3)");
+    test(true, "(1,2,3)", "(2,3,1)");
+    test(true, "(4,(8),(2,((6))))", "((8,((4)),(6,2)))");
+    test(false, "(10,6,3),(9,4)", "((3,4,6),(9,10))");
+    test(true, "(1,(3,2))", "((3,2),1)");
+    test(true, "(2,(3))", "((3),2)");
+    test(true, "(1,(2,3))", "(((2,(3)),(1)))");
+    test(true, "8,3", "8,69,3");
+    test(true, "5", "69,5");
+    test(true, "1", "1,69");
+    test(true, "(1,2)", "(69,69,69,69,(1,2))");
+    test(true, "(1,69,69,(69,6,3),69,69)", "(69,69,((6,69,(69,3)),(1,69)))");
+    test(true, "1,69,(69,2,69)", "1,2");
+    test(true, "1,(69,69))", "1");
+    test(false, "1,(69,2,3))", "(69,1),2,(69,3)");
+    test(false, "1,(69,2,3))", "(69,1),2,(69,3)");
+    test(false, "2,(1,3)", "1,(2,3)");
+    test(false, "1,10,(2,3,4)", "2,3,(1,4,10)");
+    
+}
+
+// void d_test() {
+
+// }
+// void deploy_test() {
+//     d_test(5, "(1,5,(10,6,3),(2,(8,7)),(9,4))")
+//     d_test(7 , "((7,(3,(4,9,(1,2)))),8,(5,(10,6)))")
+    
+// }
+void deploy();
+
+int main() {
+    deploy();
+    // ismorphic_test();
+    return 1;
+
+
+    // string input1 = "(4,(8),(2,((6))))";
+    // // string input2 = "((8,((4)),(6,2)))";
+    string input1 = "(9,3,5,(1,6,(10,7)),4,(2,8))";
+    string input2 = "(7,9,5,4,6,(3,8),(10,1),2)";
+    // // wystarczy usunac 1
+    Tree tree1 = *new_tree();
+    Tree tree2 = *new_tree();
+    parse(input1, *tree1.root, tree1);
+    parse(input2, *tree2.root, tree2);
+
+    cout << progressing_powerset(tree1, tree2) << endl;
+    // // -------- READYYY
+    // return 0;
+
+    // -------- READYYY
+
+
     // print_exp(*tree1.root);
+    // cout << endl;
+
+
+    // print_exp(*tree2.root);
+    // cout << endl;
+
+    // cout << endl << "Ismorphic? " << isomorphic(tree1.root, tree2.root) << endl;
+    // get_node(tree1, 3)->hidden = true;
+    // get_node(tree2, 3)->hidden = true;
+    // cout <<  get_node(tree2, 3)->value << endl;
+    // get_node(tree2, 1)->hidden = true;
     // cout << endl << tree1.root->d_length ;
     // cout << endl << tree1.root->children_number;
     // cout << endl;
     // cout << endl << tree2.root->d_length;
-    // cout << endl << tree2.root->children_number;
+    // cout << endl << tree2.root->children_number << endl;
+
+    // recalculate(*tree1.root);
+    // recalculate(*tree2.root);
+
+    // print_exp(*tree1.root);
+    // cout << endl;
+
+
+    // print_exp(*tree2.root);
+    // cout << endl;
+    // cout << endl << "Ismorphic? " << isomorphic(tree1.root, tree2.root) << endl;
+
     // cout << endl ;
-    cout << endl << progressing_powerset(tree1, tree2) << endl;
+    
     return 0;
 }
+
+
+
+void deploy() {
+    int tests = 0;
+    cin >> tests;
+
+    string line;
+    for (int i = 0; i < tests; i++) {
+        cin >> line;
+        line = line.substr(0, line.size() - 1);
+        Tree* tree = new_tree();
+        parse(line, *tree->root, *tree);
+        
+    }
+    for (int i = 0; i < tests; i++) {
+        // TODO: tutaj moge dac zeby wyczyscc stare i drzewo
+        for (int j = i+1; j < tests; j++) {
+            // cout << "odp: ";
+            printf("%d\n", progressing_powerset(*get_tree(i), *get_tree(j)));
+        }
+    }
+}
+
+
+
+// (69,(1,(4,3,2),(69,10),69),69) == (3,(69,((69,2),69)),(10,4,69,1))
+
