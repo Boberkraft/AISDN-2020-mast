@@ -2,12 +2,12 @@
 #include <stdio.h>
 #include <string>
 
-#define BUFFER_SIZE (1024*1024)
+#define BUFFER_SIZE (1024*10)
 char mybuffer[BUFFER_SIZE + 1] = { 0 };
 unsigned int mybuffer_pos = BUFFER_SIZE;
 
 void read_ahead() {
-    if (mybuffer_pos + 1024 > BUFFER_SIZE) {
+    if (mybuffer_pos + 128> BUFFER_SIZE) {
         memmove(mybuffer, mybuffer + mybuffer_pos, BUFFER_SIZE - mybuffer_pos);
         fread(mybuffer + BUFFER_SIZE - mybuffer_pos, 1, BUFFER_SIZE - (BUFFER_SIZE - mybuffer_pos), stdin);
         mybuffer_pos = 0;
@@ -326,7 +326,8 @@ void parse(int start, int end, Node& parent, Tree& tree) {
 
     }
     level = 0;
-    for (int i = start; i <= end; i++) {
+    for (int i = start; i <=
+        end; i++) {
         if (mybuffer[i] == '(')
             level++;
         if (mybuffer[i] == ')')
@@ -510,6 +511,7 @@ void deploy() {
         for (int j = i + 1; j < tests; j++) {
             // cout << "odp: ";
             // print_exp(*get_tree(i)->root);
+            //progressing_powerset(*get_tree(i), *get_tree(j));
             printf("%d\n", progressing_powerset(*get_tree(i), *get_tree(j)));
         }
     }
