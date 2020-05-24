@@ -6,6 +6,9 @@
 char mybuffer[BUFFER_SIZE + 1] = { 0 };
 unsigned int mybuffer_pos = BUFFER_SIZE;
 
+
+
+
 void read_ahead() {
     if (mybuffer_pos + 128> BUFFER_SIZE) {
         memmove(mybuffer, mybuffer + mybuffer_pos, BUFFER_SIZE - mybuffer_pos);
@@ -15,7 +18,6 @@ void read_ahead() {
 }
 
 const int MAX_TREES = 150;
-const int MAX_NODES = 100;
 int current_tree = 0;
 
 using namespace std;
@@ -41,15 +43,27 @@ inline bool is_leaf(Node* node) {
 }
 
 
+class Vec {
+    int top;
+    int capacity;
+    Node * a;
+public:
+    Vec();
+
+    void set(int i, Node* node);
+    Node * get(int i);
+};
+
+
 struct Tree {
     int i{ -1 };
     int leafs{ 0 };
+    Vec* nodes { new Vec{} };
     Node* root{ nullptr };
 };
 
 
 Tree* TREES[MAX_TREES];
-Node* NODES[MAX_TREES * MAX_NODES];
 
 Tree* new_tree() {
     Node* new_node = new Node{ -1 };
@@ -61,9 +75,44 @@ Tree* new_tree() {
 }
 
 
+
 Tree* get_tree(int i) {
     return TREES[i];
 }
+
+
+Vec::Vec() {
+    capacity = 10;
+    a = new Node[capacity];
+    top = 0;
+}
+
+void Vec::set(int i, Node* node) {
+    if (i > capacity) {
+        int new_capacity = capacity;
+        while (i > new_capacity) {
+            new_capacity *= 2;
+        }
+        auto new_a = new Node[new_capacity];
+        top = 0;
+        for (int i = 0; i < capacity; i++) {
+            new_a[i] = a[i]; // TODO: dac tutaj tego memmove
+        }
+        capacity = new_capacity;
+        a = new_a;
+    }
+    a[i] = *node;
+    cout << "seting" << a[i].value << endl;
+}
+
+
+Node* Vec::get(int i) {
+    if (i >= capacity) {
+        cout << "Ej za duzo" << endl;
+    }
+    return &a[i];
+}
+
 
 void print_exp(Node& node) {
     if (node.value == -1) {
@@ -76,12 +125,11 @@ void print_exp(Node& node) {
     }
     else {
         if (node.hidden) {
-            cout << "[";
+            cout << "_";
+        } else {
+            cout << node.value;
         }
-        cout << node.value;
-        if (node.hidden) {
-            cout << "]";
-        }
+        
     }
     if (node.brother != nullptr) {
         cout << ",";
@@ -91,10 +139,10 @@ void print_exp(Node& node) {
 
 // i 3 zwraca node z value = 4
 Node* get_node(Tree& tree, int i) {
-    return NODES[MAX_NODES * tree.i + i];
+    return tree.nodes->get(i);
 }
 void register_node(Tree& tree, Node& node) {
-    NODES[MAX_NODES * tree.i + node.value - 1] = &node;
+    tree.nodes->set(node.value - 1, &node);
     tree.leafs++;
 }
 
@@ -174,6 +222,7 @@ void hide_node(Node* node, bool hide) {
 };
 */
 
+
 void add_child(Node& parent, Node& child) {
     // if (parent.value != -1) {
     //     cout << "Ej!" << endl;
@@ -236,12 +285,12 @@ bool combinations_of_k(int start, int k, Tree& tree1, Tree& tree2) {
         // cout << " == ";;
         // print_exp(*tree2.root);
         // cout << endl;
-        // cout << isomorphic(tree1.root, tree2.root) << "?" << endl;
         if (isomorphic(*tree1.root, *tree2.root)) {
             // cout << start << " X " << k << endl;
-            // print_exp(*tree1.root);
-            // cout << " == ";;
-            // print_exp(*tree2.root);
+            print_exp(*tree1.root);
+            cout << " == ";;
+            print_exp(*tree2.root);
+            cout << " ";
             return true;
         }
         else
@@ -257,7 +306,6 @@ bool combinations_of_k(int start, int k, Tree& tree1, Tree& tree2) {
         Node* node2 = get_node(tree2, i);
         node1->hidden = true;
         node2->hidden = true;
-        // cout << "- " << get_node(tree1, i)->value << endl;
         // cout << get_node(tree1, i)->hidden <<  endl;
         // cout << get_node(tree2, i)->hidden <<  endl;
         if (combinations_of_k(i + 1, k - 1, tree1, tree2)) {
@@ -265,7 +313,6 @@ bool combinations_of_k(int start, int k, Tree& tree1, Tree& tree2) {
             node2->hidden = false;
             return true;
         }
-        // cout << "+ " << get_node(tree1, i)->value << endl;
         node1->hidden = false;
         node2->hidden = false;
     }
@@ -274,7 +321,7 @@ bool combinations_of_k(int start, int k, Tree& tree1, Tree& tree2) {
 
 int progressing_powerset(Tree& tree1, Tree& tree2) {
     for (int i = 1; i < tree1.leafs; i++) {
-        // cout << "-> combinations_of_k(" << i << ")" << endl;
+        cout << "-> combinations_of_k(" << i << ")" << endl;
         if (combinations_of_k(0, i, tree1, tree2)) {
             return i;
         }
@@ -490,7 +537,7 @@ void deploy() {
     std::cout.tie(NULL);
 
     int tests = 0;
-    scanf_s("%d\n", &tests);
+    scanf("%d\n", &tests);
     int i = 0;
     for (;tests > i; i++) {
         read_ahead();
