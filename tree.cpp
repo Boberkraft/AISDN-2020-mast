@@ -326,8 +326,7 @@ void parse(int start, int end, Node& parent, Tree& tree) {
 
     }
     level = 0;
-    for (int i = start; i <=
-        end; i++) {
+    for (int i = start; i <= end; i++) {
         if (mybuffer[i] == '(')
             level++;
         if (mybuffer[i] == ')')
